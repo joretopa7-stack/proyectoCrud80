@@ -1,0 +1,18 @@
+[
+  {
+    "id": 1,
+    "nombre": "Monitor",
+    "precio": 299.99,
+    "stock": 15,
+    "categoria": "Electrónica",
+    "imagen": null
+  },
+  {
+    "id": 3,
+    "nombre": "Monitor",
+    "precio": 299.99,
+    "stock": 15,
+    "categoria": "Electrónica",
+    "imagen": null
+  }
+]
