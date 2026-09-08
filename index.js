@@ -5,12 +5,26 @@ const path = require('path');
 
 const app = express();
 const puerto = process.env.PORT || 3000;
-//importanto mi middleware
-const registroMiddleware = require("./middleware/registroMiddleware")
+
+// Importando middlewares
+const registroMiddleware = require("./middleware/registroMiddleware");
+const manejoErrores = require("./middleware/manejadorErrores");
+const autentificacion = require("./middleware/autentificacion");
 // Middleware para parsear JSON
 app.use(express.json());
-//MISmIDDLEWWARE
-app.use(registroMiddleware)
+
+// MIDDLEWARE DE REGISTRO (ANTES de las rutas)
+app.use(registroMiddleware);
+
+// JWT_ autentificacion
+app.use(autentificacion)
+
+// MIDDLEWARE DE TIEMPO (ANTES de las rutas)
+app.use((req, res, next) => {
+    console.log(`Tiempo en millisegundos: ${Date.now()}`);
+    next();
+});
+
 // Ruta raíz
 app.get("/", (req, res) => {
     res.send("<h1>Api Rest Productos la 80</h1>");
@@ -19,7 +33,7 @@ app.get("/", (req, res) => {
 // Ruta para productos
 const productosPath = path.join(__dirname, 'datosProductos.json');
 
-// Función auxiliar para leer productos
+// Funcion auxiliar para leer productos
 const leerProductos = () => {
     try {
         const data = fs.readFileSync(productosPath, 'utf8');
@@ -29,7 +43,7 @@ const leerProductos = () => {
     }
 };
 
-// Función auxiliar para escribir productos
+// Funcion auxiliar para escribir productos
 const escribirProductos = (productos) => {
     fs.writeFileSync(productosPath, JSON.stringify(productos, null, 2));
 };
@@ -59,7 +73,7 @@ app.post('/api/products', (req, res) => {
         return res.status(400).json({ mensaje: 'Faltan campos obligatorios: nombre, precio, stock, categoria' });
     }
     if (typeof precio !== 'number' || precio <= 0) {
-        return res.status(400).json({ mensaje: 'El precio debe ser un número mayor a 0' });
+        return res.status(400).json({ mensaje: 'El precio debe ser un numero mayor a 0' });
     }
     if (typeof stock !== 'number' || stock < 0 || !Number.isInteger(stock)) {
         return res.status(400).json({ mensaje: 'El stock debe ser un entero positivo o 0' });
@@ -73,7 +87,7 @@ app.post('/api/products', (req, res) => {
         precio,
         stock,
         categoria,
-        imagen: null // o "sin imagen"
+        imagen: null
     };
     productos.push(nuevoProducto);
     escribirProductos(productos);
@@ -89,7 +103,7 @@ app.put('/api/products/:id', (req, res) => {
         return res.status(400).json({ mensaje: 'Faltan campos obligatorios: nombre, precio, stock, categoria' });
     }
     if (typeof precio !== 'number' || precio <= 0) {
-        return res.status(400).json({ mensaje: 'El precio debe ser un número mayor a 0' });
+        return res.status(400).json({ mensaje: 'El precio debe ser un numero mayor a 0' });
     }
     if (typeof stock !== 'number' || stock < 0 || !Number.isInteger(stock)) {
         return res.status(400).json({ mensaje: 'El stock debe ser un entero positivo o 0' });
@@ -100,14 +114,13 @@ app.put('/api/products/:id', (req, res) => {
     if (index === -1) {
         return res.status(404).json({ mensaje: 'Producto no encontrado' });
     }
-    // Actualizar manteniendo el id y la imagen existente (o null)
+    // Actualizar manteniendo el id y la imagen existente
     productos[index] = {
         ...productos[index],
         nombre,
         precio,
         stock,
         categoria,
-        // imagen se conserva la que tenía
     };
     escribirProductos(productos);
     res.json(productos[index]);
@@ -123,21 +136,27 @@ app.delete('/api/products/:id', (req, res) => {
     }
     productos.splice(index, 1);
     escribirProductos(productos);
-    res.status(204).send(); // Sin contenido
+    res.status(204).send();
 });
-//ENDPOINT ERROR
-app.get("/error",(req,res)=>{
-    
-    res.send({Mensaje: new Error()})
-    //res.json({Mensaje: new Error()})
+
+// ENDPOINT ERROR (para probar el manejo de errores)
+app.get("/error", (req, res, next) => {
+    const error = new Error("Error intencional");
+    error.statusCode = 500;
+    next(error);
+});
+
+// MIDDLEWARE DE ERRORES AL FINAL (despues de TODAS las rutas)
+app.use(manejoErrores);
+
+// RUTA PROTEGIDA ENDPOINT
+app.get("/rutaProtegida", (req,res)=>{
+    res.send("Ruta protegida")
 })
-// MIDDLEWARE
-app.use((req,res,next)=>{
-    console.log(`Tiempo en millisegundos:${Date.now()}`)
-    next()
-})
+
 
 // Levantar el servidor
 app.listen(puerto, () => {
     console.log(`SERVIDOR: http://localhost:${puerto}`);
+    console.log(`Entorno: ${process.env.NODE_ENV || 'development'}`);
 });
