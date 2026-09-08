@@ -1,18 +1,18 @@
 [
-    {
-        "id": 1,
-        "nombre": "Laptop",
-        "precio": 1500.99,
-        "stock": 10,
-        "categoria": "Electrónica",
-        "imagen": null
-    },
-    {
-        "id": 2,
-        "nombre": "Mouse",
-        "precio": 25.50,
-        "stock": 50,
-        "categoria": "Accesorios",
-        "imagen": null
-    }
+  {
+    "id": 1,
+    "nombre": "Monitor",
+    "precio": 299.99,
+    "stock": 15,
+    "categoria": "Electrónica",
+    "imagen": null
+  },
+  {
+    "id": 3,
+    "nombre": "Monitor",
+    "precio": 299.99,
+    "stock": 15,
+    "categoria": "Electrónica",
+    "imagen": null
+  }
 ]
