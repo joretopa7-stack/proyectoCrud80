@@ -5,10 +5,12 @@ const path = require('path');
 
 const app = express();
 const puerto = process.env.PORT || 3000;
-
+//importanto mi middleware
+const registroMiddleware = require("./middleware/registroMiddleware")
 // Middleware para parsear JSON
 app.use(express.json());
-
+//MISmIDDLEWWARE
+app.use(registroMiddleware)
 // Ruta raíz
 app.get("/", (req, res) => {
     res.send("<h1>Api Rest Productos la 80</h1>");
@@ -123,6 +125,17 @@ app.delete('/api/products/:id', (req, res) => {
     escribirProductos(productos);
     res.status(204).send(); // Sin contenido
 });
+//ENDPOINT ERROR
+app.get("/error",(req,res)=>{
+    
+    res.send({Mensaje: new Error()})
+    //res.json({Mensaje: new Error()})
+})
+// MIDDLEWARE
+app.use((req,res,next)=>{
+    console.log(`Tiempo en millisegundos:${Date.now()}`)
+    next()
+})
 
 // Levantar el servidor
 app.listen(puerto, () => {
