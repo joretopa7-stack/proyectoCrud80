@@ -3,6 +3,7 @@ const express = require('express');
 const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
+const jwt = require('jsonwebtoken'); // Requerimos JWT
 
 const app = express();
 const puerto = process.env.PORT || 3000;
@@ -11,22 +12,20 @@ const puerto = process.env.PORT || 3000;
 const registroMiddleware = require("./middleware/registroMiddleware");
 const manejoErrores = require("./middleware/manejadorErrores");
 const autentificacion = require("./middleware/autentificacion");
+
 // Middleware para parsear JSON
 app.use(express.json());
 
 // MIDDLEWARE DE REGISTRO (ANTES de las rutas)
 app.use(registroMiddleware);
 
-// JWT_ autentificacion
-//app.use(autentificacion)
-
 // MIDDLEWARE DE TIEMPO (ANTES de las rutas)
 app.use((req, res, next) => {
-    console.log(`Tiempo en millisegundos: ${Date.now()}`);
+    console.log(`Tiempo en milisegundos: ${Date.now()}`);
     next();
 });
 
-// CONFIGURACION DE MULTER (imagenes en la raiz, carpeta /images)
+// CONFIGURACION DE MULTER (imágenes en la raíz, carpeta /images)
 const carpetaImagenes = path.join(__dirname, "images");
 if (!fs.existsSync(carpetaImagenes)) {
     fs.mkdirSync(carpetaImagenes, { recursive: true });
@@ -42,18 +41,46 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage });
 
-// Servir la carpeta de imagenes estaticamente
+// Servir la carpeta de imágenes estáticamente
 app.use("/images", express.static(carpetaImagenes));
+
+// ==========================================
+// ENDPOINT DE INICIO DE SESIÓN (LOGIN)
+// ==========================================
+app.post("/api/login", (req, res) => {
+    const { usuario, clave } = req.body;
+
+    // Simular datos del usuario de la base de datos
+    const datoUsuario = { usuario: "Yeimy", clave: "1234" };
+
+    // Validar credenciales
+    if (usuario !== datoUsuario.usuario || clave !== datoUsuario.clave) {
+        return res.status(401).json({ mensaje: "Usuario o clave incorrectos" });
+    }
+
+    // Generar Token con expiración de 1 hora
+    const token = jwt.sign(
+        { usuario: usuario },
+        process.env.JWT_SECRET || 'secret_key_defecto',
+        { expiresIn: "1h" }
+    );
+
+    // Responder con el token
+    return res.status(200).json({
+        mensaje: "Inicio de sesión exitoso",
+        token: token
+    });
+});
 
 // Ruta raíz
 app.get("/", (req, res) => {
-    res.send("<h1>Api Rest Productos la 80</h1>");
+    res.send("<h1>API Rest Productos la 80</h1>");
 });
 
 // Ruta para productos
 const productosPath = path.join(__dirname, 'datosProductos.json');
 
-// Funcion auxiliar para leer productos
+// Función auxiliar para leer productos
 const leerProductos = () => {
     try {
         const data = fs.readFileSync(productosPath, 'utf8');
@@ -63,10 +90,14 @@ const leerProductos = () => {
     }
 };
 
-// Funcion auxiliar para escribir productos
+// Función auxiliar para escribir productos
 const escribirProductos = (productos) => {
     fs.writeFileSync(productosPath, JSON.stringify(productos, null, 2));
 };
+
+// ==========================================
+// RUTAS DE PRODUCTOS
+// ==========================================
 
 // Obtener todos los productos
 app.get('/api/products', (req, res) => {
@@ -89,7 +120,6 @@ app.get('/api/products/:id', (req, res) => {
 app.post('/api/products', upload.single("imagen"), (req, res) => {
     const { nombre, precio, stock, categoria } = req.body;
 
-    // Con multipart/form-data todo llega como string, hay que parsear
     const precioNum = parseFloat(precio);
     const stockNum = parseInt(stock);
 
@@ -107,7 +137,6 @@ app.post('/api/products', upload.single("imagen"), (req, res) => {
     const productos = leerProductos();
     const nuevoId = productos.length > 0 ? Math.max(...productos.map(p => p.id)) + 1 : 1;
 
-    // Ruta publica de la imagen (si se subio)
     const rutaImagen = req.file ? `/images/${req.file.filename}` : null;
 
     const nuevoProducto = {
@@ -131,7 +160,6 @@ app.put('/api/products/:id', upload.single("imagen"), (req, res) => {
     const precioNum = parseFloat(precio);
     const stockNum = parseInt(stock);
 
-    // Validaciones similares
     if (!nombre || !precio || stock === undefined || !categoria) {
         return res.status(400).json({ mensaje: 'Faltan campos obligatorios: nombre, precio, stock, categoria' });
     }
@@ -148,7 +176,6 @@ app.put('/api/products/:id', upload.single("imagen"), (req, res) => {
         return res.status(404).json({ mensaje: 'Producto no encontrado' });
     }
 
-    // Si se subio una imagen nueva, borrar la anterior y actualizar
     let rutaImagen = productos[index].imagen;
     if (req.file) {
         if (productos[index].imagen) {
@@ -160,7 +187,6 @@ app.put('/api/products/:id', upload.single("imagen"), (req, res) => {
         rutaImagen = `/images/${req.file.filename}`;
     }
 
-    // Actualizar manteniendo el id
     productos[index] = {
         ...productos[index],
         nombre,
@@ -173,7 +199,7 @@ app.put('/api/products/:id', upload.single("imagen"), (req, res) => {
     res.json(productos[index]);
 });
 
-// Eliminar un producto (DELETE) — tambien borra su imagen
+// Eliminar un producto (DELETE) — borra su imagen asociada
 app.delete('/api/products/:id', (req, res) => {
     const id = parseInt(req.params.id);
     let productos = leerProductos();
@@ -182,7 +208,6 @@ app.delete('/api/products/:id', (req, res) => {
         return res.status(404).json({ mensaje: 'Producto no encontrado' });
     }
 
-    // Borrar la imagen asociada si existe
     if (productos[index].imagen) {
         const rutaImagen = path.join(__dirname, productos[index].imagen);
         if (fs.existsSync(rutaImagen)) {
@@ -195,22 +220,19 @@ app.delete('/api/products/:id', (req, res) => {
     res.status(204).send();
 });
 
-// ENDPOINT ERROR (para probar el manejo de errores)
+// RUTA PROTEGIDA (Usa el middleware de autenticación individualmente)
+app.get("/rutaProtegida", autentificacion, (req, res) => {
+    res.json({ mensaje: "Acceso concedido a la ruta protegida", usuario: req.usuario });
+});
+
+// ENDPOINT DE PRUEBA DE ERROR
 app.get("/error", (req, res, next) => {
     const error = new Error("Error intencional");
     error.statusCode = 500;
     next(error);
 });
 
-// MIDDLEWARE DE ERRORES AL FINAL (despues de TODAS las rutas)
-app.use(manejoErrores);
-
-// RUTA PROTEGIDA ENDPOINT
-app.get("/rutaProtegida", (req,res)=>{
-    res.send("Ruta protegida")
-})
-
-// VISTA HTML DE PRODUCTOS (simple, sin estilos)
+// VISTA HTML DE PRODUCTOS
 app.get('/productos', (req, res) => {
     const productos = leerProductos();
     const html = `
@@ -226,8 +248,7 @@ app.get('/productos', (req, res) => {
                     <p>Nombre: ${p.nombre}</p>
                     <p>Precio: ${p.precio}</p>
                     <p>Stock: ${p.stock}</p>
-                    <p>Categoria: ${p.categoria}</p>
-                    ${p.imagen ? `<img src="${p.imagen}" width="200">` : '<p>Sin imagen</p>'}
+                    <p>Categoría: ${p.categoria}</p>${p.imagen ? `<img src="${p.imagen}" width="200">` : '<p>Sin imagen</p>'}
                     <hr>
                 </div>
             `).join('')}
@@ -236,6 +257,9 @@ app.get('/productos', (req, res) => {
     `;
     res.send(html);
 });
+
+// MIDDLEWARE DE ERRORES AL FINAL (después de TODAS las rutas)
+app.use(manejoErrores);
 
 // Levantar el servidor
 app.listen(puerto, () => {

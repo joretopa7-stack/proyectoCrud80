@@ -3,6 +3,14 @@ const manejoErrores = (err, req, res, next) => {
     const mensaje = err.message || "Error inesperado.";
     const fecha = new Date().toISOString();
     
+ // Errores específicos de Multer (subida de archivos)
+    if (err instanceof multer.MulterError) {
+        return res.status(400).json({
+            mensaje: "Error al subir la imagen",
+            error: err.message
+        });
+    }
+
     // Log del error
     console.error(`[${fecha}] Estado: ${codigoEstado} - Mensaje: ${mensaje}`);
     
