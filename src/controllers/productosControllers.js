@@ -14,6 +14,7 @@ const listarProductosController = async (req, res) => {
     }
 };
 
+
 const listarUnProducto =(req,res)=>{
     res.json({mensaje: "producto listado"})
 };
