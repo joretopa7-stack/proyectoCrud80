@@ -14,6 +14,21 @@ const listarProductosController = async (req, res) => {
     }
 };
 
+const listarUnProducto =(req,res)=>{
+    res.json({mensaje: "producto listado"})
+};
+
+const crearProducto =(req,res)=>{
+    res.json({mensaje: "producto creado con exito"})
+};
+
+const eliminarProducto =(req,res)=>{
+    res.json({mensaje: "producto eliminado con exito"})
+};
+
 module.exports = {
-    listarProductosController
+    listarProductosController,
+    listarUnProducto,
+    crearProducto,
+    eliminarProducto
 };
